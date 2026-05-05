@@ -13,15 +13,19 @@
 "use strict"
 
 // game config
+
+import ArrayBoom from "./Scenes/ArrayBoom.js";
+import Failure from "./Scenes/Failure.js";
+
 let config = {
     parent: 'phaser-game',
     type: Phaser.CANVAS,
     render: {
         pixelArt: true  // prevent pixel art from getting blurred when scaled
     },
-    width: 800,
-    height: 600,
-    scene: [ArrayBoom]
+    width: 960,
+    height: 640,
+    scene: [ArrayBoom, Failure]
 }
 
 
