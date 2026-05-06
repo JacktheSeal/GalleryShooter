@@ -1,10 +1,10 @@
-import { LEVELS } from "./enemyArrays.js";
+import { LEVELS } from "./enemyWaves.js";
 import { GameState } from "./gameState.js";
-import { initGame } from "./gameInit.js";
+import { ENEMY_TYPES } from "./enemyTypes.js";
 
-export default class ArrayBoom extends Phaser.Scene {
+export default class Level1 extends Phaser.Scene {
     constructor() {
-        super("arrayBoom");
+        super("Level1");
 
         // Initialize a class variable "my" which is an object.
         // The object has two properties, both of which are objects
@@ -13,12 +13,18 @@ export default class ArrayBoom extends Phaser.Scene {
         this.my = {sprite: {}, text: {}};
 
         // defines cooldown for enemy bullets, in update calls
-        this.enemyBulletCooldown = 120;
-        this.enemyBulletTimer = 0;
+        // this.enemyBulletCooldown = 120;
+        // this.enemyBulletTimer = 0;
 
-        this.enemyMovementCooldown = 480;
-        this.enemyMovementTimer = 0;
+        // this.enemyMovementCooldown = 480;
+        // this.enemyMovementTimer = 0;
 
+        this.currentWave = 0;
+        this.waveTimer = 0;
+
+        //game state flags
+        this.waveActive = false;
+        this.levelComplete = false;
 
         this.maxBullets = 10;           // Don't create more than this many bullets
     }
@@ -27,7 +33,11 @@ export default class ArrayBoom extends Phaser.Scene {
         this.load.setPath("./assets/");
         this.load.image("player", "PNG/Players/Tiles/tile_0000.png");
         this.load.image("player_bullet", "PNG/Weapons/Tiles/tile_0023.png");
-        this.load.image("enemy", "PNG/Enemies/Tiles/tile_0013.png");
+
+
+        this.load.image("enemy_basic", "PNG/Enemies/Tiles/tile_0013.png");
+        this.load.image("enemy_rapid", "PNG/Players/Tiles/tile_0008.png");
+        this.load.image("enemy_sniper", "PNG/Players/Tiles/tile_0012.png");
 
         // For animation
         this.load.image("whitePuff00", "whitePuff00.png");
@@ -52,6 +62,11 @@ export default class ArrayBoom extends Phaser.Scene {
     }
 
     create() {
+
+
+        //reset wave
+        this.currentWave = 0;
+        this.waveTimer = 0;
 
         let my = this.my;
 
@@ -85,12 +100,6 @@ export default class ArrayBoom extends Phaser.Scene {
         
 
         this.enemies = this.add.group();
-
-        LEVELS.level1.forEach((enemy) => {
-            const sprite = this.add.sprite(enemy.x, enemy.y, "enemy").setScale(4.0);
-            sprite.scorePoints = 25;
-            this.enemies.add(sprite);
-        });
 
         // Notice that in this approach, we don't create any bullet sprites in create(),
         // and instead wait until we need them, based on the number of space bar presses
@@ -157,6 +166,25 @@ export default class ArrayBoom extends Phaser.Scene {
         const speed = 2;  // pixels per second
         let dt = speed * (delta / 1000);  // convert delta from ms to seconds, and multiply by speed to get pixels/tick
 
+        //Wave Spawning
+        this.waveTimer+= delta;
+
+        if (this.waveActive && this.enemies.getLength() === 0) {
+            this.waveActive = false;
+        }
+
+        const levelData = LEVELS.level1;
+
+        if (
+            !this.waveActive &&
+            !this.levelComplete &&
+            this.currentWave < levelData.length
+        ) {
+            this.spawnWave(levelData[this.currentWave]);
+            this.waveActive = true;
+            this.currentWave++;
+        }
+
         //MOVEMENT
 
         // Moving left
@@ -175,20 +203,36 @@ export default class ArrayBoom extends Phaser.Scene {
             }
         }
 
+        //Enemy Movement
+        for (let enemy of this.enemies.getChildren()) {
+            this.updateEnemyMovement(enemy, time, dt);
+        }
+
 
         //BULLET SPAWNING
 
         // Enemy Bullet
-        this.enemyBulletTimer++;
-        if (this.enemyBulletTimer >= this.enemyBulletCooldown) {
-            this.enemyBulletTimer = 0;
+        // this.enemyBulletTimer++;
+        // if (this.enemyBulletTimer >= this.enemyBulletCooldown) {
+        //     this.enemyBulletTimer = 0;
 
-            const enemiesArray = this.enemies.getChildren();
+        //     const enemiesArray = this.enemies.getChildren();
 
-            if (enemiesArray.length > 0) {
-                const randomEnemy = Phaser.Utils.Array.GetRandom(enemiesArray);
-                this.spawnEnemyBullet(randomEnemy);
-            }   
+        //     if (enemiesArray.length > 0) {
+        //         const randomEnemy = Phaser.Utils.Array.GetRandom(enemiesArray);
+        //         this.spawnEnemyBullet(randomEnemy);
+        //     }   
+        // }
+        for (let enemy of this.enemies.getChildren()) {
+
+            enemy.shootTimer++;
+
+            if (enemy.shootTimer >= enemy.shootCooldown) {
+
+                enemy.shootTimer = 0;
+
+                this.spawnEnemyBullet(enemy);
+            }
         }
 
         // Player Bullet
@@ -201,8 +245,18 @@ export default class ArrayBoom extends Phaser.Scene {
             }
         }
 
+
+        //Destroy Player Bullets
         for (let bullet of this.my.sprite.bullet.getChildren()) {
             if (bullet.y < -bullet.displayHeight / 2) {
+                bullet.destroy();
+            }
+        }
+
+        //Destroy Enemy Bullets
+        for (let bullet of my.sprite.enemyBullet.getChildren()) {
+
+            if (bullet.y > this.game.config.height + bullet.displayHeight / 2) {
                 bullet.destroy();
             }
         }
@@ -217,17 +271,16 @@ export default class ArrayBoom extends Phaser.Scene {
                     this.puff = this.add.sprite(enemy.x, enemy.y, "whitePuff03").setScale(0.25).play("puff");
                     // clear out bullet -- put y offscreen, will get reaped next update
                     bullet.y = -100;
-                    enemy.visible = false;
-                    enemy.x = -100;
+
                     // Update score
                     GameState.score += enemy.scorePoints;
                     this.updateScore();
+
+                    enemy.destroy();
                     // TODO: Play collision sound
                     this.hitSound.play();
                     // Have new enemy appear after end of animation
                     this.puff.on(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
-                        enemy.visible = true;
-                        enemy.x = Math.random()*this.game.config.width;
                     }, this);
 
                 }
@@ -246,7 +299,6 @@ export default class ArrayBoom extends Phaser.Scene {
                 }
                 if (GameState.health <= 0) {
                     this.scene.start("Failure");
-                    initGame(this);
                 }
             }
         }
@@ -261,7 +313,7 @@ export default class ArrayBoom extends Phaser.Scene {
 
         // Move enemy bullets
         for (let bullet of my.sprite.enemyBullet.getChildren()) {
-            bullet.y += this.bulletSpeed * dt;
+            bullet.y += bullet.speed * dt;
         }
 
     }
@@ -276,16 +328,77 @@ export default class ArrayBoom extends Phaser.Scene {
         return true;
     }
 
+    updateEnemyMovement(enemy, time, dt) {
+
+        switch(enemy.movement) {
+
+            case "straight":
+                enemy.y += enemy.moveSpeed * dt;
+                break;
+
+            case "zigzag":
+                enemy.y += enemy.moveSpeed * dt;
+                enemy.x = enemy.startX + Math.sin(time * 0.005) * 100;
+                break;
+
+            case "still":
+                // do nothing
+                break;
+        }
+    }
+
+    spawnWave(wave) {
+
+        wave.enemies.forEach((enemyData) => {
+
+            const typeData = ENEMY_TYPES[enemyData.type];
+
+            const enemy = this.add.sprite(
+                enemyData.x,
+                enemyData.y,
+                typeData.texture
+            );
+
+            enemy.setScale(4);
+
+            // Attach gameplay data directly to sprite
+            enemy.enemyType = enemyData.type;
+
+            enemy.health = typeData.health;
+            enemy.scorePoints = typeData.score;
+
+            enemy.shootCooldown = typeData.shootCooldown;
+            enemy.shootTimer = 0;
+
+            enemy.moveSpeed = typeData.moveSpeed;
+            enemy.movement = typeData.movement;
+
+            enemy.bulletSpeed = typeData.bulletSpeed;
+
+            enemy.startX = enemy.x;
+            enemy.startY = enemy.y;
+
+            this.enemies.add(enemy);
+        });
+    }
+
     updateScore() {
         this.my.text.score.setText("Score " + GameState.score);
     }
 
     spawnEnemyBullet(enemy) {
-    this.my.sprite.enemyBullet.add(
-        this.add.sprite(enemy.x, enemy.y, "player_bullet")
-            .setScale(4.0)
-            .setTint(0xff0000) // optional: make enemy bullets red
-    );
+
+        const bullet = this.add.sprite(
+            enemy.x,
+            enemy.y,
+            "player_bullet"
+        )
+        .setScale(4.0)
+        .setTint(0xff0000);
+
+        bullet.speed = enemy.bulletSpeed;
+
+        this.my.sprite.enemyBullet.add(bullet);
     }
 
     updateHealthUI() {

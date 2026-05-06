@@ -14,7 +14,7 @@
 
 // game config
 
-import ArrayBoom from "./Scenes/ArrayBoom.js";
+import Level1 from "./Scenes/Level1.js";
 import Failure from "./Scenes/Failure.js";
 
 let config = {
@@ -25,7 +25,7 @@ let config = {
     },
     width: 960,
     height: 640,
-    scene: [ArrayBoom, Failure]
+    scene: [Level1, Failure]
 }
 
 

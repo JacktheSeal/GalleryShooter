@@ -1,5 +1,5 @@
-import { initGame } from "./gameInit.js";
-import arrayBoom from "./ArrayBoom.js";
+import Level1 from "./Level1.js";
+import { GameState } from "./gameState.js";
 export default class Failure extends Phaser.Scene {
     constructor() {
         super("Failure");
@@ -25,7 +25,8 @@ export default class Failure extends Phaser.Scene {
 
     update() {
         if (Phaser.Input.Keyboard.JustDown(this.space)) {
-            this.scene.start("arrayBoom");
+            GameState.reset();
+            this.scene.start("Level1");
         }
     }
 }
