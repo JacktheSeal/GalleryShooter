@@ -48,7 +48,11 @@ export default class Level1 extends Phaser.Scene {
         this.load.image("healthTile", "PNG/Interface/Tiles/tile_0143.png");
 
         this.load.audio("hitSound", 'Sounds/explosion-a.ogg');
-        this.load.audio("bgMusic", 'mondamusic-retro-arcade-game-music-512837.mp3');
+        this.load.audio("hurtSound", 'Sounds/hurt-a.ogg');
+        this.load.audio("enemyShootSound", 'Sounds/shoot-a.ogg');
+        this.load.audio("playerShootSound", 'Sounds/shoot-d.ogg');
+
+        this.load.audio("bgMusic", 'backgroundmusic.mp3');
     
         this.load.image("level_tiles", "/PNG/Tiles/Tilemap/tilemap_packed.png");    // tile sheet   
         this.load.tilemapTiledJSON("map", "/Levels/Level1.json");                  // Load JSON of tilemap
@@ -56,6 +60,7 @@ export default class Level1 extends Phaser.Scene {
 
     create() {
 
+        this.physics.world.setBoundsCollision(true, true, true, true);
 
         //create background for score
         this.topBar = this.add.rectangle(
@@ -97,21 +102,22 @@ export default class Level1 extends Phaser.Scene {
         this.obstacleLayer.setScale(4.0);
 
         //obstacle creation
-        this.obstacles = this.add.group();
+        this.obstacles = this.physics.add.staticGroup();
 
         const obstacleObjects = this.map.getObjectLayer("Obstacles").objects;
 
         obstacleObjects.forEach(obj => {
-
             const block = this.add.rectangle(
-                obj.x * 4,
-                obj.y * 4,
+                obj.x * 4 + (obj.width * 4) / 2,
+                obj.y * 4 + (obj.height * 4) / 2,
                 obj.width * 4,
                 obj.height * 4,
                 0x000000,
-                1 // invisible (or set alpha)
-            ).setOrigin(0,0).setDepth(102);
+                0 // invisible (or set alpha)
+            );
 
+            this.physics.add.existing(block, true); // static body
+            block.body.setOffset(0, 0); // important alignment fix
             this.obstacles.add(block);
         });
 
@@ -120,8 +126,11 @@ export default class Level1 extends Phaser.Scene {
         this.updateHealthUI();
 
         //Player Creation
-        my.sprite.player = this.add.sprite(this.game.config.width/2, this.game.config.height - 40, "player");
-        my.sprite.player.setScale(4.0);
+        my.sprite.player = this.physics.add.sprite(
+            this.game.config.width / 2,
+            this.game.config.height - 40,
+            "player"
+        ).setScale(4);
         
 
         this.enemies = this.add.group();
@@ -149,11 +158,24 @@ export default class Level1 extends Phaser.Scene {
             volume: 0.5
         });
 
+        this.hurtSound = this.sound.add("hurtSound", {
+            volume: 0.2
+        });
+
         this.bgMusic = this.sound.add("bgMusic", {
-            volume: 0.5,
+            volume: 0.3,
             loop: true
         });
-        //this.bgMusic.play();
+
+        this.shootSound = this.sound.add("enemyShootSound", {
+            volume: 0.05
+        });
+
+        this.playerShootSound = this.sound.add("playerShootSound", {
+            volume: 0.2
+        });
+        
+        this.bgMusic.play();
 
 
         // Create key objects
@@ -166,11 +188,11 @@ export default class Level1 extends Phaser.Scene {
         this.bulletSpeed = 300;
 
         // update HTML description
-        document.getElementById('description').innerHTML = '<h2>Array Boom.js</h2><br>A: left // D: right // Space: fire/emit';
+        document.getElementById('description').innerHTML = '<h2>Almost Bone Dry</h2><br>A: left // D: right // Space: fire';
 
         // Put score on screen
         
-        my.text.score = this.add.text(this.game.config.width - 140, 10, "WAVE 1", {
+        my.text.score = this.add.text(this.game.config.width - 160, 10, "WAVE 1", {
             fontFamily: "GameFont",
             fontSize: "32px",
             color: "#ffffff"
@@ -186,6 +208,57 @@ export default class Level1 extends Phaser.Scene {
 
         // TODO: create background music object
         // TODO: start playing background music
+
+
+
+        //Physics collisions
+
+        //Bullet -> Enemy
+        this.physics.add.overlap(
+            this.my.sprite.bullet,
+            this.enemies,
+            (bullet, enemy) => {
+
+                bullet.destroy();
+                enemy.destroy();
+
+                GameState.score += enemy.scorePoints;
+                this.updateScore();
+
+                this.hitSound.play();
+            }
+        );
+
+        //Enemy Bullet -> Player
+        this.physics.add.overlap(
+            this.my.sprite.enemyBullet,
+            my.sprite.player,
+            (bullet, player) => {
+
+                bullet.destroy();
+
+                if (GameState.health > 0) {
+                    GameState.health--;
+                    this.hurtSound.play();
+                    this.updateHealthUI();
+                }
+
+                if (GameState.health <= 0) {
+                    this.bgMusic.stop();
+                    GameState.highScore = Math.max(GameState.highScore, GameState.score);
+                    this.scene.start("Failure");
+                }
+            }
+        );
+
+        this.physics.add.collider(this.my.sprite.bullet, this.obstacles, (bullet) => {
+            bullet.destroy();
+        });
+
+        this.physics.add.collider(this.my.sprite.enemyBullet, this.obstacles, (bullet) => {
+            bullet.destroy();
+        });
+
 
     }
 
@@ -244,19 +317,6 @@ export default class Level1 extends Phaser.Scene {
 
 
         //BULLET SPAWNING
-
-        // Enemy Bullet
-        // this.enemyBulletTimer++;
-        // if (this.enemyBulletTimer >= this.enemyBulletCooldown) {
-        //     this.enemyBulletTimer = 0;
-
-        //     const enemiesArray = this.enemies.getChildren();
-
-        //     if (enemiesArray.length > 0) {
-        //         const randomEnemy = Phaser.Utils.Array.GetRandom(enemiesArray);
-        //         this.spawnEnemyBullet(randomEnemy);
-        //     }   
-        // }
         for (let enemy of this.enemies.getChildren()) {
 
             enemy.shootTimer++;
@@ -264,133 +324,54 @@ export default class Level1 extends Phaser.Scene {
             if (enemy.shootTimer >= enemy.shootCooldown) {
 
                 enemy.shootTimer = 0;
-
+                this.shootSound.play();
                 this.spawnEnemyBullet(enemy);
             }
         }
 
         // Player Bullet
         if (Phaser.Input.Keyboard.JustDown(this.space)) {
+            //TEMPTEMPTMEPTEMTPEMTPTMEPTMEPMTEPTMPEMTPEMTPEMTPETEP
+            this.bgMusic.stop();
+            this.scene.start("Level2");
             // Are we under our bullet quota?
-            if (my.sprite.bullet.getLength() < this.maxBullets) {
-                my.sprite.bullet.add(this.add.sprite(
-                    my.sprite.player.x, my.sprite.player.y-(my.sprite.player.displayHeight/2), "player_bullet").setScale(4.0)
-                );
+            this.playerShootSound.play();
+
+            if (this.my.sprite.bullet.getLength() >= this.maxBullets) {
+                return; // don't spawn a new bullet
             }
+            const bullet = this.physics.add.sprite(
+                my.sprite.player.x,
+                my.sprite.player.y - my.sprite.player.displayHeight / 2,
+                "player_bullet"
+            ).setScale(4);
+
+            bullet.body.setSize(
+                bullet.width * 0.25,
+                bullet.height * 0.25
+            );
+
+            bullet.body.setOffset(
+                bullet.width * 0.375,
+                bullet.height * 0.375
+            );
+
+            bullet.body.setCollideWorldBounds(true);
+            bullet.body.onWorldBounds = true;
+
+            bullet.body.setVelocityY(-300);
+            this.my.sprite.bullet.add(bullet);
         }
 
 
-        //Destroy Player Bullets
-        for (let bullet of this.my.sprite.bullet.getChildren()) {
-            if (bullet.y < -bullet.displayHeight / 2) {
-                bullet.destroy();
-            }
-        }
+        this.physics.world.on("worldbounds", (body) => {
+            body.gameObject.destroy();
+        });
 
-        //Destroy Enemy Bullets
-        for (let bullet of my.sprite.enemyBullet.getChildren()) {
 
-            if (bullet.y > this.game.config.height + bullet.displayHeight / 2) {
-                bullet.destroy();
-            }
-        }
+
 
         //COLLISION CHECKS
-
-        // Check for collision with the enemy
-        for (let bullet of my.sprite.bullet.getChildren()) {
-            for(let enemy of this.enemies.getChildren()) {
-                if (this.collides(bullet, enemy, 0.6, 0.8)) {
-                    // start animation
-                    this.puff = this.add.sprite(enemy.x, enemy.y, "whitePuff03").setScale(0.25).play("puff");
-                    // clear out bullet -- put y offscreen, will get reaped next update
-                    bullet.y = -100;
-
-                    // Update score
-                    GameState.score += enemy.scorePoints;
-                    this.updateScore();
-
-                    enemy.destroy();
-                    // TODO: Play collision sound
-                    this.hitSound.play();
-                    // Have new enemy appear after end of animation
-                    this.puff.on(Phaser.Animations.Events.ANIMATION_COMPLETE, () => {
-                    }, this);
-
-                }
-            }
-        }
-
-        //Check for collision with player
-        for (let bullet of my.sprite.enemyBullet.getChildren()) {
-            if (this.collides(bullet, my.sprite.player)) {
-                bullet.y = this.game.config.height + 100; // move bullet offscreen to bottom, will get reaped next update
-                // Remove one health tile
-                if (GameState.health > 0) {
-                    GameState.health--;
-                    console.log(GameState.health);
-                    this.updateHealthUI();
-                }
-                if (GameState.health <= 0) {
-                    this.scene.start("Failure");
-                }
-            }
-        }
-
-        //Check for obstacle collision
-        for (let bullet of this.my.sprite.bullet.getChildren()) {
-            for (let obstacle of this.obstacles.getChildren()) {
-                if (this.collides(bullet, obstacle, 0.8, 1, 4, 6)) {
-                    bullet.destroy();
-                }
-            }
-        }
-
-        //Check for enemy obstacle collision
-        for (let bullet of my.sprite.enemyBullet.getChildren()) {
-            for (let obstacle of this.obstacles.getChildren()) {
-                if (this.collides(bullet, obstacle, 0.8, 1, 4, 6)) {
-                    bullet.destroy();
-                }
-            }
-        }
-
-
-        // BULLET MOVEMENT
-
-        // Move player bullets
-        for (let bullet of my.sprite.bullet.getChildren()) {
-            bullet.y -= this.bulletSpeed * dt;
-        }
-
-        // Move enemy bullets
-        for (let bullet of my.sprite.enemyBullet.getChildren()) {
-            bullet.y += bullet.speed * dt;
-        }
-
-    }
-
-    // A center-radius AABB collision check
-    collides(a, b, scaleA = 1, scaleB = 1, insetA = 0, insetB = 0) {
-
-        const aW = a.displayWidth * scaleA;
-        const aH = a.displayHeight * scaleA;
-
-        const bW = b.displayWidth * scaleB;
-        const bH = b.displayHeight * scaleB;
-
-        const aLeft = a.x + insetA;
-        const aRight = a.x + aW - insetA;
-
-        const bLeft = b.x + insetB;
-        const bRight = b.x + bW - insetB;
-
-        return (
-            aLeft < bRight &&
-            aRight > bLeft &&
-            a.y < b.y + bH &&
-            a.y + aH > b.y
-        );
     }
 
     spawnWave(wave) {
@@ -399,20 +380,48 @@ export default class Level1 extends Phaser.Scene {
 
             const typeData = ENEMY_TYPES[enemyData.type];
 
-            const enemy = this.add.sprite(
+            const enemy = this.physics.add.sprite(
                 enemyData.x,
                 enemyData.y,
                 typeData.texture
-            );
+            ).setScale(4);
 
-            this.tweens.add({
-                targets: enemy,
-                x: enemy.x + 100,   // move 100px right
-                duration: 1500,
-                yoyo: true,         // go back and forth
-                repeat: -1,         // infinite loop
-                ease: 'Sine.easeInOut'
-            });
+            if (typeData.texture === "enemy_basic") {
+                this.tweens.add({
+                    targets: enemy,
+                    x: enemy.x + 100,
+                    duration: 1500,
+                    yoyo: true,
+                    repeat: -1,
+                    hold: 2000,
+                    repeatDelay: 2000,
+                    ease: 'Power1'
+                });
+
+            } else if (typeData.texture === "enemy_rapid") {
+                this.tweens.add({
+                    targets: enemy,
+                    x: enemy.x + 160,
+                    duration: 800,
+                    yoyo: true,
+                    repeat: -1,
+                    hold: 500,
+                    repeatDelay: 500,
+                    ease: 'Power0'
+                });
+
+            } else if (typeData.texture === "enemy_sniper") {
+                this.tweens.add({
+                    targets: enemy,
+                    x: enemy.x + 120,
+                    duration: 2500,
+                    yoyo: true,
+                    repeat: -1,
+                    hold: 3000,
+                    repeatDelay: 3000,
+                    ease: 'Sine.easeInOut'
+                });
+            }
 
             enemy.setScale(4);
 
@@ -443,16 +452,27 @@ export default class Level1 extends Phaser.Scene {
 
     spawnEnemyBullet(enemy) {
 
-        const bullet = this.add.sprite(
+        const bullet = this.physics.add.sprite(
             enemy.x,
             enemy.y,
             "player_bullet"
         )
-        .setScale(4.0)
+        .setScale(4)
         .setTint(0xff0000);
+        bullet.body.setSize(
+            bullet.width * 0.25,
+            bullet.height * 0.25
+        );
 
-        bullet.speed = enemy.bulletSpeed;
+        bullet.body.setOffset(
+            bullet.width * 0.375,
+            bullet.height * 0.375
+        );
+        
+        bullet.body.setCollideWorldBounds(true);
+        bullet.body.onWorldBounds = true;
 
+        bullet.body.setVelocityY(200);
         this.my.sprite.enemyBullet.add(bullet);
     }
 
@@ -494,6 +514,8 @@ export default class Level1 extends Phaser.Scene {
         });
 
         this.time.delayedCall(2500, () => {
+            this.bgMusic.stop();
+            GameState.highScore = Math.max(GameState.highScore, GameState.score);
             this.scene.start("Level2"); 
         });
     }

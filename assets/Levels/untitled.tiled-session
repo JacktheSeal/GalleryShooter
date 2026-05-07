@@ -1,8 +1,71 @@
 {
-    "activeFile": "",
+    "activeFile": "Level2.json",
     "expandedProjectPaths": [
+        "."
     ],
     "fileStates": {
+        "": {
+            "scaleInDock": 1,
+            "scaleInEditor": 1
+        },
+        "Level1.json": {
+            "expandedObjectLayers": [
+                3
+            ],
+            "scale": 4.235416666666667,
+            "selectedLayer": 2,
+            "viewCenter": {
+                "x": 71.89375307427449,
+                "y": 47.456960157402854
+            }
+        },
+        "Level1.json#tiles_packed": {
+            "scaleInDock": 1.4
+        },
+        "Level1.tmx": {
+            "scale": 4.278958333333333,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 120.00584254345392,
+                "y": 79.92599444958373
+            }
+        },
+        "Level1.tmx#tiles_packed": {
+            "scaleInDock": 1
+        },
+        "Level2.json": {
+            "expandedObjectLayers": [
+                4
+            ],
+            "scale": 3.5308333333333333,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 85.10738730233656,
+                "y": 102.24215246636771
+            }
+        },
+        "Level2.json#tilemap_packed": {
+            "scaleInDock": 1
+        },
+        "Level2.tmj": {
+            "scale": 3.5308333333333333,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 119.94335614821809,
+                "y": 120.08496577767288
+            }
+        },
+        "Level2.tmx": {
+            "scale": 3.5308333333333333,
+            "selectedLayer": 3,
+            "viewCenter": {
+                "x": 119.94335614821809,
+                "y": 120.08496577767288
+            }
+        },
+        "Level2.tmx#tilemap_packed": {
+            "scaleInDock": 1
+        }
     },
     "last.exportedFilePath": "C:/Users/jacks/CMPM 120/GalleryShooter/assets/Levels",
     "last.imagePath": "C:/Users/jacks/CMPM 120/GalleryShooter/assets/PNG/Tiles/Tilemap",
@@ -13,9 +76,16 @@
     "map.tileWidth": 16,
     "map.width": 15,
     "openFiles": [
+        "Level1.json",
+        "Level1.tmx",
+        "Level2.json"
     ],
     "project": "untitled.tiled-project",
     "recentFiles": [
+        "Level1.json",
+        "Level1.tmx",
+        "Level2.json",
+        "Level2.tmj"
     ],
     "tileset.embedInMap": true,
     "tileset.tileSize": {

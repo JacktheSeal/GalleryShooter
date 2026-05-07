@@ -12,12 +12,22 @@ export default class Failure extends Phaser.Scene {
     }
 
     create() {
-        this.add.text(this.game.config.width / 2 - 100, this.game.config.height / 2, "You Lose! Press Space to Restart", {
-            fontFamily: 'Times, serif',
-            fontSize: 24,
+        this.add.text(this.game.config.width / 2 - 100, this.game.config.height / 2 - 100, "You Lose! Press space to restart.", {
+            fontFamily: 'GameFont',
+            fontSize: '32px',
             wordWrap: {
                 width: 200
-            }
+            },
+            color: "#ffffff"
+        });
+
+        this.add.text(this.game.config.width / 2 - 100, this.game.config.height / 2 + 100, ("High Score: " + GameState.highScore), {
+            fontFamily: 'GameFont',
+            fontSize: '32px',
+            wordWrap: {
+                width: 200
+            },
+            color: "#ffffff"
         });
 
         this.space = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);

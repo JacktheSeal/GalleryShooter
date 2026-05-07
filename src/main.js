@@ -16,6 +16,8 @@
 
 import Level1 from "./Scenes/Level1.js";
 import Failure from "./Scenes/Failure.js";
+import Level2 from "./Scenes/Level2.js";
+import End from "./Scenes/End.js";
 
 let config = {
     parent: 'phaser-game',
@@ -25,7 +27,13 @@ let config = {
     },
     width: 960,
     height: 640,
-    scene: [Level1, Failure]
+    physics: {
+        default: "arcade",
+        arcade: {
+            debug: true   // turn ON for now so you can see hitboxes
+        }
+    },
+    scene: [Level1, Level2, Failure, End]
 }
 
 
