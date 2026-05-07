@@ -245,6 +245,7 @@ export default class Level2 extends Phaser.Scene {
 
                 if (GameState.health <= 0) {
                     GameState.highScore = Math.max(GameState.highScore, GameState.score);
+                    this.bgMusic.stop();
                     this.scene.start("Failure");
                 }
             }
@@ -524,6 +525,7 @@ export default class Level2 extends Phaser.Scene {
 
         this.time.delayedCall(2500, () => {
             GameState.highScore = Math.max(GameState.highScore, GameState.score);
+            this.bgMusic.stop();
             this.scene.start("End"); 
         });
     }
