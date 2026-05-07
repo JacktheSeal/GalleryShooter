@@ -47,13 +47,6 @@ export default class Level1 extends Phaser.Scene {
 
         this.load.image("healthTile", "PNG/Interface/Tiles/tile_0143.png");
 
-        // Load the Kenny Rocket Square bitmap font
-        // This was converted from TrueType format into Phaser bitmap
-        // format using the BMFont tool.
-        // BMFont: https://www.angelcode.com/products/bmfont/
-        // Tutorial: https://dev.to/omar4ur/how-to-create-bitmap-fonts-for-phaser-js-with-bmfont-2ndc
-        this.load.bitmapFont("rocketSquare", "KennyRocketSquare_0.png", "KennyRocketSquare.fnt");
-
         this.load.audio("hitSound", 'Sounds/explosion-a.ogg');
         this.load.audio("bgMusic", 'mondamusic-retro-arcade-game-music-512837.mp3');
     
@@ -62,6 +55,17 @@ export default class Level1 extends Phaser.Scene {
     }
 
     create() {
+
+
+        //create background for score
+        this.topBar = this.add.rectangle(
+            0,
+            0,
+            this.game.config.width,
+            50,
+            0x000000
+        ).setOrigin(0, 0);
+        this.topBar.setDepth(100);
 
 
         //reset wave
@@ -87,8 +91,29 @@ export default class Level1 extends Phaser.Scene {
         this.tileset = this.map.addTilesetImage("tiles_packed", "level_tiles");
         this.groundLayer = this.map.createLayer("Ground", this.tileset, 0, 0);
         this.groundLayer.setScale(4.0);
-        this.obstacleLayer = this.map.createLayer("Obstacles", this.tileset, 0, 0);
+        this.obstacleLayer = this.map.createLayer("Back_Textures", this.tileset, 0, 0);
         this.obstacleLayer.setScale(4.0);
+        this.obstacleLayer = this.map.createLayer("Obstacle_Sprites", this.tileset, 0, 0);
+        this.obstacleLayer.setScale(4.0);
+
+        //obstacle creation
+        this.obstacles = this.add.group();
+
+        const obstacleObjects = this.map.getObjectLayer("Obstacles").objects;
+
+        obstacleObjects.forEach(obj => {
+
+            const block = this.add.rectangle(
+                obj.x * 4,
+                obj.y * 4,
+                obj.width * 4,
+                obj.height * 4,
+                0x000000,
+                1 // invisible (or set alpha)
+            ).setOrigin(0,0).setDepth(102);
+
+            this.obstacles.add(block);
+        });
 
         //health creation
         this.healthTiles = this.add.group();
@@ -144,17 +169,20 @@ export default class Level1 extends Phaser.Scene {
         document.getElementById('description').innerHTML = '<h2>Array Boom.js</h2><br>A: left // D: right // Space: fire/emit';
 
         // Put score on screen
-        my.text.score = this.add.bitmapText(580, 0, "rocketSquare", "");
-        this.updateScore();
-
-        // Put title on screen
-        this.add.text(10, 5, "Level Bleh", {
-            fontFamily: 'Times, serif',
-            fontSize: 24,
-            wordWrap: {
-                width: 60
-            }
+        
+        my.text.score = this.add.text(this.game.config.width - 140, 10, "WAVE 1", {
+            fontFamily: "GameFont",
+            fontSize: "32px",
+            color: "#ffffff"
         });
+        this.updateScore();
+        my.text.score.setDepth(101);
+
+        this.add.text(20, 10, "Level One", {
+            fontFamily: "GameFont",
+            fontSize: "32px",
+            color: "#ffffff"
+        }).setDepth(101);
 
         // TODO: create background music object
         // TODO: start playing background music
@@ -165,6 +193,17 @@ export default class Level1 extends Phaser.Scene {
         let my = this.my;
         const speed = 2;  // pixels per second
         let dt = speed * (delta / 1000);  // convert delta from ms to seconds, and multiply by speed to get pixels/tick
+
+        //Check for completion
+        if (
+            !this.levelComplete &&
+            this.currentWave >= LEVELS.level1.length &&
+            this.enemies.getLength() === 0
+        ) {
+            this.levelComplete = true;
+
+            this.showLevelCompleteMessage();
+        }
 
         //Wave Spawning
         this.waveTimer+= delta;
@@ -201,11 +240,6 @@ export default class Level1 extends Phaser.Scene {
             if (my.sprite.player.x < (this.game.config.width - (my.sprite.player.displayWidth/2))) {
                 my.sprite.player.x += this.playerSpeed * dt;
             }
-        }
-
-        //Enemy Movement
-        for (let enemy of this.enemies.getChildren()) {
-            this.updateEnemyMovement(enemy, time, dt);
         }
 
 
@@ -266,7 +300,7 @@ export default class Level1 extends Phaser.Scene {
         // Check for collision with the enemy
         for (let bullet of my.sprite.bullet.getChildren()) {
             for(let enemy of this.enemies.getChildren()) {
-                if (this.collides(enemy, bullet)) {
+                if (this.collides(bullet, enemy, 0.6, 0.8)) {
                     // start animation
                     this.puff = this.add.sprite(enemy.x, enemy.y, "whitePuff03").setScale(0.25).play("puff");
                     // clear out bullet -- put y offscreen, will get reaped next update
@@ -303,6 +337,24 @@ export default class Level1 extends Phaser.Scene {
             }
         }
 
+        //Check for obstacle collision
+        for (let bullet of this.my.sprite.bullet.getChildren()) {
+            for (let obstacle of this.obstacles.getChildren()) {
+                if (this.collides(bullet, obstacle, 0.8, 1, 4, 6)) {
+                    bullet.destroy();
+                }
+            }
+        }
+
+        //Check for enemy obstacle collision
+        for (let bullet of my.sprite.enemyBullet.getChildren()) {
+            for (let obstacle of this.obstacles.getChildren()) {
+                if (this.collides(bullet, obstacle, 0.8, 1, 4, 6)) {
+                    bullet.destroy();
+                }
+            }
+        }
+
 
         // BULLET MOVEMENT
 
@@ -319,32 +371,26 @@ export default class Level1 extends Phaser.Scene {
     }
 
     // A center-radius AABB collision check
-    collides(a, b) {
+    collides(a, b, scaleA = 1, scaleB = 1, insetA = 0, insetB = 0) {
 
-        const scale = 0.5; // adjust this to make the collision box smaller than the actual sprite size
+        const aW = a.displayWidth * scaleA;
+        const aH = a.displayHeight * scaleA;
 
-        if (Math.abs(a.x - b.x) > (a.displayWidth/2 * scale + b.displayWidth/2 * scale)) return false;
-        if (Math.abs(a.y - b.y) > (a.displayHeight/2 * scale + b.displayHeight/2 * scale)) return false;
-        return true;
-    }
+        const bW = b.displayWidth * scaleB;
+        const bH = b.displayHeight * scaleB;
 
-    updateEnemyMovement(enemy, time, dt) {
+        const aLeft = a.x + insetA;
+        const aRight = a.x + aW - insetA;
 
-        switch(enemy.movement) {
+        const bLeft = b.x + insetB;
+        const bRight = b.x + bW - insetB;
 
-            case "straight":
-                enemy.y += enemy.moveSpeed * dt;
-                break;
-
-            case "zigzag":
-                enemy.y += enemy.moveSpeed * dt;
-                enemy.x = enemy.startX + Math.sin(time * 0.005) * 100;
-                break;
-
-            case "still":
-                // do nothing
-                break;
-        }
+        return (
+            aLeft < bRight &&
+            aRight > bLeft &&
+            a.y < b.y + bH &&
+            a.y + aH > b.y
+        );
     }
 
     spawnWave(wave) {
@@ -358,6 +404,15 @@ export default class Level1 extends Phaser.Scene {
                 enemyData.y,
                 typeData.texture
             );
+
+            this.tweens.add({
+                targets: enemy,
+                x: enemy.x + 100,   // move 100px right
+                duration: 1500,
+                yoyo: true,         // go back and forth
+                repeat: -1,         // infinite loop
+                ease: 'Sine.easeInOut'
+            });
 
             enemy.setScale(4);
 
@@ -383,7 +438,7 @@ export default class Level1 extends Phaser.Scene {
     }
 
     updateScore() {
-        this.my.text.score.setText("Score " + GameState.score);
+        this.my.text.score.setText("Score : " + GameState.score);
     }
 
     spawnEnemyBullet(enemy) {
@@ -413,5 +468,33 @@ export default class Level1 extends Phaser.Scene {
 
             this.healthTiles.add(tile);
         }
+    }
+
+    showLevelCompleteMessage() {
+
+        const text = this.add.text(
+            this.game.config.width / 2,
+            this.game.config.height / 2,
+            "LEVEL COMPLETE",
+            {
+                fontSize: "64px",
+                color: "#ffff00",
+                stroke: "#000",
+                strokeThickness: 8
+            }
+        ).setOrigin(0.5);
+
+        text.setScale(0.2);
+
+        this.tweens.add({
+            targets: text,
+            scale: 1.2,
+            duration: 600,
+            ease: "Back.Out"
+        });
+
+        this.time.delayedCall(2500, () => {
+            this.scene.start("Level2"); 
+        });
     }
 }

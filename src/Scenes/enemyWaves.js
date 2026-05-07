@@ -6,9 +6,9 @@ export const LEVELS = {
             delay: 0,
 
             enemies: [
-                { type: "basic", x: 100, y: 100 },
-                { type: "basic", x: 200, y: 100 },
-                { type: "basic", x: 300, y: 100 },
+                { type: "basic", x: 300, y: 300 },
+                { type: "basic", x: 400, y: 300 },
+                { type: "basic", x: 500, y: 300 },
             ]
         },
 

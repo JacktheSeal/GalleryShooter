@@ -8,7 +8,7 @@
     "last.imagePath": "C:/Users/jacks/CMPM 120/GalleryShooter/assets/PNG/Tiles/Tilemap",
     "map.height": 15,
     "map.lastUsedExportFilter": "JSON map files (*.tmj *.json)",
-    "map.lastUsedFormat": "tmx",
+    "map.lastUsedFormat": "json",
     "map.tileHeight": 16,
     "map.tileWidth": 16,
     "map.width": 15,
