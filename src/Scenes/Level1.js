@@ -331,9 +331,6 @@ export default class Level1 extends Phaser.Scene {
 
         // Player Bullet
         if (Phaser.Input.Keyboard.JustDown(this.space)) {
-            //TEMPTEMPTMEPTEMTPEMTPTMEPTMEPMTEPTMPEMTPEMTPEMTPETEP
-            this.bgMusic.stop();
-            this.scene.start("Level2");
             // Are we under our bullet quota?
             this.playerShootSound.play();
 

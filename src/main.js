@@ -30,7 +30,7 @@ let config = {
     physics: {
         default: "arcade",
         arcade: {
-            debug: true   // turn ON for now so you can see hitboxes
+            debug: false   // turn ON for now so you can see hitboxes
         }
     },
     scene: [Level1, Level2, Failure, End]
